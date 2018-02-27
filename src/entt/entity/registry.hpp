@@ -33,9 +33,10 @@ namespace entt {
  */
 template<typename Entity>
 class Registry {
-    using tag_family = Family<struct InternalRegistryTagFamily>;
-    using component_family = Family<struct InternalRegistryComponentFamily>;
-    using view_family = Family<struct InternalRegistryViewFamily>;
+    Family<struct InternalRegistryTagFamily> tag_family;
+    Family<struct InternalRegistryComponentFamily> component_family;
+    Family<struct InternalRegistryViewFamily> view_family;
+
     using traits_type = entt_traits<Entity>;
 
     struct Attachee {
@@ -98,14 +99,14 @@ class Registry {
 
     template<typename Component>
     bool managed() const noexcept {
-        const auto ctype = component_family::type<Component>();
+        const auto ctype = component_family.type<Component>();
         return ctype < pools.size() && pools[ctype];
     }
 
     template<typename Component>
     const Pool<Component> & pool() const noexcept {
         assert(managed<Component>());
-        return static_cast<Pool<Component> &>(*pools[component_family::type<Component>()]);
+        return static_cast<Pool<Component> &>(*pools[component_family.type<Component>()]);
     }
 
     template<typename Component>
@@ -115,7 +116,7 @@ class Registry {
 
     template<typename Component>
     Pool<Component> & ensure() {
-        const auto ctype = component_family::type<Component>();
+        const auto ctype = component_family.type<Component>();
 
         if(!(ctype < pools.size())) {
             pools.resize(ctype + 1);
@@ -131,7 +132,7 @@ class Registry {
     template<typename... Component>
     SparseSet<Entity> & handler() {
         static_assert(sizeof...(Component) > 1, "!");
-        const auto vtype = view_family::type<Component...>();
+        const auto vtype = view_family.type<Component...>();
 
         if(!(vtype < handlers.size())) {
             handlers.resize(vtype + 1);
@@ -164,9 +165,9 @@ public:
     /*! @brief Unsigned integer type. */
     using size_type = std::size_t;
     /*! @brief Unsigned integer type. */
-    using tag_type = typename tag_family::family_type;
+    auto tag_type() { return tag_family.type(); }
     /*! @brief Unsigned integer type. */
-    using component_type = typename component_family::family_type;
+    auto component_type() { return component_family.type(); }
 
     /*! @brief Default constructor. */
     Registry() = default;
@@ -194,8 +195,8 @@ public:
      * @return Runtime numeric identifier of the given type of tag.
      */
     template<typename Tag>
-    tag_type tag() const noexcept {
-        return tag_family::type<Tag>();
+    auto tag() const noexcept {
+        return tag_family.type<Tag>();
     }
 
     /**
@@ -211,8 +212,8 @@ public:
      * @return Runtime numeric identifier of the given type of component.
      */
     template<typename Component>
-    component_type component() const noexcept {
-        return component_family::type<Component>();
+    auto component() const noexcept {
+        return component_family.type<Component>();
     }
 
     /**
@@ -481,7 +482,7 @@ public:
     Tag & attach(entity_type entity, Args&&... args) {
         assert(valid(entity));
         assert(!has<Tag>());
-        const auto ttype = tag_family::type<Tag>();
+        const auto ttype = tag_family.type<Tag>();
 
         if(!(ttype < tags.size())) {
             tags.resize(ttype + 1);
@@ -499,7 +500,7 @@ public:
     template<typename Tag>
     void remove() {
         if(has<Tag>()) {
-            tags[tag_family::type<Tag>()].reset();
+            tags[tag_family.type<Tag>()].reset();
         }
     }
 
@@ -510,7 +511,7 @@ public:
      */
     template<typename Tag>
     bool has() const noexcept {
-        const auto ttype = tag_family::type<Tag>();
+        const auto ttype = tag_family.type<Tag>();
         return (ttype < tags.size() &&
                 // it's a valid tag
                 tags[ttype] &&
@@ -533,7 +534,7 @@ public:
     template<typename Tag>
     const Tag & get() const noexcept {
         assert(has<Tag>());
-        return static_cast<Attaching<Tag> *>(tags[tag_family::type<Tag>()].get())->tag;
+        return static_cast<Attaching<Tag> *>(tags[tag_family.type<Tag>()].get())->tag;
     }
 
     /**
@@ -568,7 +569,7 @@ public:
     template<typename Tag>
     entity_type attachee() const noexcept {
         assert(has<Tag>());
-        return tags[tag_family::type<Tag>()]->entity;
+        return tags[tag_family.type<Tag>()]->entity;
     }
 
     /**
@@ -1071,7 +1072,7 @@ public:
     void discard() {
         if(contains<Component...>()) {
             using accumulator_type = int[];
-            const auto vtype = view_family::type<Component...>();
+            const auto vtype = view_family.type<Component...>();
             auto *set = handlers[vtype].get();
             // if a set exists, pools have already been created for it
             accumulator_type accumulator = { (pool<Component>().remove(set), 0)... };
@@ -1088,7 +1089,7 @@ public:
     template<typename... Component>
     bool contains() const noexcept {
         static_assert(sizeof...(Component) > 1, "!");
-        const auto vtype = view_family::type<Component...>();
+        const auto vtype = view_family.type<Component...>();
         return vtype < handlers.size() && handlers[vtype];
     }
 
